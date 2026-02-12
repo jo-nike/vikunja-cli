@@ -106,3 +106,51 @@ func TaskProjectID(c *client.Client, taskID int64) (int64, error) {
 	}
 	return task.ProjectID, nil
 }
+
+// ViewTaskBuckets fetches bucket-organized tasks from a kanban view.
+// Returns []TaskBucket (buckets with embedded tasks) and pagination info.
+func ViewTaskBuckets(c *client.Client, projectID, viewID int64, opts ...client.RequestOption) ([]models.TaskBucket, *client.PaginationInfo, error) {
+	path := fmt.Sprintf("/projects/%d/views/%d/tasks", projectID, viewID)
+	var buckets []models.TaskBucket
+	info, err := c.GetList(path, &buckets, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetching tasks for project %d view %d: %w", projectID, viewID, err)
+	}
+	return buckets, info, nil
+}
+
+// TaskBucketID resolves the real bucket_id for a task by finding it in kanban view data.
+// If projectID is 0, it fetches the task to get its project_id.
+// If viewID is 0, it auto-detects the kanban view via FindKanbanView.
+// Returns the bucket ID, or 0 if the task is not found in any bucket.
+func TaskBucketID(c *client.Client, taskID, projectID, viewID int64) (int64, error) {
+	if projectID == 0 {
+		pid, err := TaskProjectID(c, taskID)
+		if err != nil {
+			return 0, err
+		}
+		projectID = pid
+	}
+	if viewID == 0 {
+		view, err := FindKanbanView(c, projectID)
+		if err != nil {
+			return 0, err
+		}
+		viewID = view.ID
+	}
+
+	filterOpt := client.WithFilter(fmt.Sprintf("id = %d", taskID))
+	buckets, _, err := ViewTaskBuckets(c, projectID, viewID, filterOpt)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, b := range buckets {
+		for _, t := range b.Tasks {
+			if t.ID == taskID {
+				return b.ID, nil
+			}
+		}
+	}
+	return 0, nil
+}
