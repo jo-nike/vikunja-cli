@@ -13,12 +13,26 @@ url = "https://vikunja.example.com"
 token = "your-api-token"
 ```
 
+### JWT Authentication (recommended for write operations)
+
+Vikunja API tokens (`tk_...`) work for read operations but may silently ignore write operations (task updates, moves, bucket changes). For full read/write support, configure username and password:
+
+```toml
+url = "https://vikunja.example.com"
+username = "your-username"
+password = "your-password"
+```
+
+When `username` and `password` are set, the CLI automatically authenticates via `POST /api/v1/login` to obtain a JWT. The JWT is cached to `~/.cache/vikunja-cli/jwt-<hash>` (keyed by server URL) and reused until it expires (with a 30-second buffer). If no credentials are configured, the `token` field is used as a fallback.
+
 **Environment variables** (override config file values):
 
 | Variable | Description |
 |---|---|
 | `VIKUNJA_URL` | Base URL of the Vikunja instance |
 | `VIKUNJA_TOKEN` | API token or JWT for authentication |
+| `VIKUNJA_USERNAME` | Username for JWT authentication |
+| `VIKUNJA_PASSWORD` | Password for JWT authentication |
 
 All API requests are made to `{VIKUNJA_URL}/api/v1/...`.
 

@@ -324,6 +324,26 @@ func (c *Client) PostDownloadFile(path, destPath string, body interface{}, opts 
 	return err
 }
 
+// SetToken replaces the authentication token for subsequent requests.
+func (c *Client) SetToken(token string) {
+	c.token = token
+}
+
+// Login authenticates with username/password and returns a JWT.
+func (c *Client) Login(username, password string) (string, error) {
+	body := map[string]string{
+		"username": username,
+		"password": password,
+	}
+	var result struct {
+		Token string `json:"token"`
+	}
+	if err := c.Post("/login", body, &result); err != nil {
+		return "", fmt.Errorf("login: %w", err)
+	}
+	return result.Token, nil
+}
+
 // BaseURL returns the configured base URL (without /api/v1).
 func (c *Client) BaseURL() string {
 	return strings.TrimSuffix(c.baseURL, "/api/v1")
