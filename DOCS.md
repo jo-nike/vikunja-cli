@@ -1091,7 +1091,7 @@ vikunja tasks create [flags]
 
 ### tasks get
 
-Get a task by ID.
+Get a task by ID. Automatically enriches the result with the real `bucket_id` from the kanban view (the API returns `bucket_id: 0` from the task endpoint since bucket assignments are view-specific).
 
 ```
 vikunja tasks get [flags]
@@ -1100,12 +1100,25 @@ vikunja tasks get [flags]
 | Flag | Type | Description |
 |---|---|---|
 | `--id` | int | Task ID (required) |
+| `--project-id` | int | Project ID (skips extra API call to infer project) |
+| `--view-id` | int | Kanban view ID (skips auto-detection) |
 
-**API endpoint:** `GET /api/v1/tasks/{id}`
+If `--project-id` and `--view-id` are omitted, the command auto-detects them (costs extra API calls). Bucket enrichment is non-fatal: if no kanban view exists, `bucket_id` remains `0`.
+
+**Examples:**
+```bash
+# Basic usage (auto-detects project and view)
+vikunja tasks get --id 143
+
+# Skip extra API calls by providing hints
+vikunja tasks get --id 143 --project-id 3 --view-id 7
+```
+
+**API endpoint:** `GET /api/v1/tasks/{id}` + `GET /api/v1/projects/{id}/views/{viewID}/tasks` (for bucket enrichment)
 
 ### tasks list
 
-List all tasks across all projects.
+List all tasks across all projects. Supports filtering by kanban bucket.
 
 ```
 vikunja tasks list [flags]
@@ -1122,8 +1135,32 @@ vikunja tasks list [flags]
 | `--filter-by` | string | Field to filter by |
 | `--filter-value` | string | Value to filter for |
 | `--filter-comparator` | string | Filter comparator (equals, greater, less, etc.) |
+| `--project-id` | int | Filter tasks by project ID |
+| `--bucket` | string | Filter by bucket name (requires `--project-id`, mutually exclusive with `--bucket-id`) |
+| `--bucket-id` | int | Filter by bucket ID (requires `--project-id`, mutually exclusive with `--bucket`) |
+| `--view-id` | int | Kanban view ID (auto-detected if not specified) |
 
-**API endpoint:** `GET /api/v1/tasks/all`
+When `--bucket` or `--bucket-id` is provided, the command fetches tasks from the kanban view endpoint and returns only tasks in the specified bucket. Each task in the output will have its `bucket_id` set correctly.
+
+**Examples:**
+```bash
+# List all tasks
+vikunja tasks list
+
+# List tasks in a specific project
+vikunja tasks list --project-id 3
+
+# List tasks in the Backlog bucket
+vikunja tasks list --project-id 3 --bucket backlog
+
+# List tasks in a bucket by ID, with a specific view
+vikunja tasks list --project-id 3 --bucket-id 42 --view-id 7
+
+# Combine bucket filter with search
+vikunja tasks list --project-id 3 --bucket backlog --search "deploy"
+```
+
+**API endpoint:** `GET /api/v1/tasks/all` (default) or `GET /api/v1/projects/{id}/views/{viewID}/tasks` (when bucket filtering)
 
 ### tasks update
 
