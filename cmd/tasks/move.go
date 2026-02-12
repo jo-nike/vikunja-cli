@@ -22,13 +22,16 @@ func newMoveCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			c := cmdutil.MustClient()
 
+			// Fetch existing task to preserve all fields
+			path := fmt.Sprintf("/tasks/%d", id)
+			var task models.Task
+			if err := c.Get(path, &task); err != nil {
+				output.Error(err)
+			}
+
 			if cmd.Flags().Changed("bucket") {
 				if projectID == 0 {
-					pid, err := resolve.TaskProjectID(c, id)
-					if err != nil {
-						output.Error(err)
-					}
-					projectID = pid
+					projectID = task.ProjectID
 				}
 				bucket, _, err := resolve.BucketByNameAutoView(c, projectID, viewID, bucketName)
 				if err != nil {
@@ -37,13 +40,10 @@ func newMoveCmd() *cobra.Command {
 				bucketID = bucket.ID
 			}
 
-			body := map[string]interface{}{
-				"bucket_id": bucketID,
-			}
+			task.BucketID = bucketID
 
-			path := fmt.Sprintf("/tasks/%d", id)
 			var result models.Task
-			if err := c.Update(path, body, &result); err != nil {
+			if err := c.Update(path, task, &result); err != nil {
 				output.Error(err)
 			}
 			output.Result(result)

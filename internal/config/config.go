@@ -9,8 +9,10 @@ import (
 )
 
 type Config struct {
-	URL   string `mapstructure:"url"`
-	Token string `mapstructure:"token"`
+	URL      string `mapstructure:"url"`
+	Token    string `mapstructure:"token"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
 }
 
 func Load() (*Config, error) {
@@ -28,6 +30,8 @@ func Load() (*Config, error) {
 	v.SetEnvPrefix("")
 	v.BindEnv("url", "VIKUNJA_URL")
 	v.BindEnv("token", "VIKUNJA_TOKEN")
+	v.BindEnv("username", "VIKUNJA_USERNAME")
+	v.BindEnv("password", "VIKUNJA_PASSWORD")
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
