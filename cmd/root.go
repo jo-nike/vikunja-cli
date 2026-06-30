@@ -19,7 +19,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:           "vikunja",
+	Use:           "vikunja-cli",
 	Short:         "CLI for the Vikunja API",
 	Long:          "A command-line interface for interacting with the Vikunja project management API. All output is JSON.",
 	SilenceUsage:  true,

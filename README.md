@@ -1,33 +1,60 @@
 # vikunja-cli
 
-A command-line interface for [Vikunja](https://vikunja.io), the open-source to-do and project management application. All output is JSON, making it easy to integrate with scripts and other tools.
+A command-line interface for [Vikunja](https://vikunja.io), the open-source to-do
+and project-management app. Every command prints JSON, so it composes cleanly with
+`jq`, scripts, and other tooling.
 
 ## Installation
+
+### Prebuilt release (recommended)
+
+Download the archive for your platform from the
+[latest release](https://github.com/jo-nike/vikunja-cli/releases/latest), verify
+its checksum against `checksums.txt`, and extract the binary onto your `PATH`:
+
+```bash
+# macOS (Apple Silicon) example
+curl -fsSLO https://github.com/jo-nike/vikunja-cli/releases/latest/download/vikunja-cli-darwin-arm64.tar.gz
+curl -fsSLO https://github.com/jo-nike/vikunja-cli/releases/latest/download/checksums.txt
+shasum -a 256 -c checksums.txt --ignore-missing
+tar -xzf vikunja-cli-darwin-arm64.tar.gz
+sudo mv vikunja-cli /usr/local/bin/
+```
+
+Available archives: `darwin-{amd64,arm64}`, `linux-{amd64,arm64}`, `windows-amd64`
+(`.zip`). On macOS, Gatekeeper may quarantine the unsigned binary on first run —
+clear it with `xattr -d com.apple.quarantine /usr/local/bin/vikunja-cli`. (Binaries
+fetched via `curl` are generally not quarantined.) On Windows, use "More info → Run
+anyway" or unblock the `.zip` in its file properties.
+
+### With Go
 
 ```bash
 go install github.com/jo-nike/vikunja-cli@latest
 ```
 
-Or build from source:
+### From source
 
 ```bash
 git clone https://github.com/jo-nike/vikunja-cli.git
 cd vikunja-cli
-make build
+make build      # produces ./vikunja-cli with version metadata baked in
 ```
 
 ## Configuration
 
-Create a config file at `~/.config/vikunja-cli/config.toml`:
+Create `~/.config/vikunja-cli/config.toml`:
 
 ```toml
 url = "https://vikunja.example.com"
 token = "your-api-token"
 ```
 
-### JWT Authentication (recommended for write operations)
+### JWT authentication (recommended for writes)
 
-Vikunja API tokens (`tk_...`) work for reads but may silently ignore write operations (task updates, moves, etc.). For full read/write support, configure username and password instead:
+Vikunja API tokens (`tk_...`) work for reads but silently ignore many write
+operations (task updates, moves, bucket changes). For full read/write support,
+configure a username and password instead:
 
 ```toml
 url = "https://vikunja.example.com"
@@ -35,11 +62,13 @@ username = "your-username"
 password = "your-password"
 ```
 
-When credentials are configured, the CLI automatically logs in to obtain a JWT, which is cached to `~/.cache/vikunja-cli/` to avoid re-login on every invocation. The `token` field is used as a fallback when no credentials are set.
+With credentials set, the CLI logs in automatically to obtain a JWT and caches it
+under `~/.cache/vikunja-cli/` to avoid re-authenticating on every call. The `token`
+field is used as a fallback when no credentials are configured.
 
 ### Environment variables
 
-Environment variables override config file values:
+Environment variables override config-file values:
 
 | Variable | Description |
 |---|---|
@@ -48,68 +77,86 @@ Environment variables override config file values:
 | `VIKUNJA_USERNAME` | Username for JWT authentication |
 | `VIKUNJA_PASSWORD` | Password for JWT authentication |
 
-## Usage
+## Quickstart
 
 ```bash
-# Login and get a JWT token
-vikunja auth login --username user --password pass
+# Authenticate (prints a JWT; usually you just set credentials in config instead)
+vikunja-cli auth login --username user --password pass
 
-# List all projects
-vikunja projects list
+# Projects
+vikunja-cli projects list
+vikunja-cli projects create --title "Q1 Planning" --description "Quarterly goals"
 
-# Create a task
-vikunja tasks create --project-id 1 --title "My task"
+# Tasks
+vikunja-cli tasks create --project-id 1 --title "My task" --priority 3
+vikunja-cli tasks list --filter "done = false" --sort due_date --order-by asc
+vikunja-cli tasks update --id 42 --done
 
-# List tasks with filtering
-vikunja tasks list --filter "done = false"
+# Labels
+vikunja-cli labels create --title "urgent" --hex-color "#ff0000"
 
-# Manage labels
-vikunja labels create --title "urgent" --hex-color "#ff0000"
-
-# Get system info
-vikunja system info
+# Instance info
+vikunja-cli system info
 ```
 
-### Available Commands
+All output is JSON — pipe it through `jq` to extract fields:
+
+```bash
+vikunja-cli tasks list --project-id 1 | jq '.[] | {id, title, done}'
+```
+
+> **Formatting note:** Vikunja stores rich text as HTML. Use `<br>` for line
+> breaks (and `<br><br>` for paragraphs) in `--description`/`--comment`; plain
+> newlines get mangled. Markdown (`**bold**`, `- list`) works too.
+
+### Available commands
 
 | Command | Description |
 |---|---|
 | `auth` | Login and register |
-| `projects` | Manage projects, views, buckets, shares, webhooks, backgrounds, and team/user members |
-| `tasks` | Manage tasks, assignees, attachments, comments, labels, and relations |
-| `labels` | Manage labels |
-| `teams` | Manage teams and team members |
-| `tokens` | Manage API tokens |
-| `filters` | Manage saved filters |
+| `projects` | Projects, views, buckets, shares, webhooks, backgrounds, and team/user members |
+| `tasks` | Tasks, assignees, attachments, comments, labels, and relations |
+| `labels` | Labels |
+| `teams` | Teams and team members |
+| `tokens` | API tokens |
+| `filters` | Saved filters |
 | `notifications` | List and mark notifications as read |
-| `reactions` | Manage reactions on tasks and comments |
+| `reactions` | Reactions on tasks and comments |
 | `subscriptions` | Subscribe/unsubscribe to projects and tasks |
-| `migration` | Import data from Todoist, Trello, Microsoft To-Do, TickTick |
-| `user` | Manage account, settings, TOTP, CalDAV tokens, export, and deletion |
-| `system` | Get Vikunja instance info |
+| `migration` | Import from Todoist, Trello, Microsoft To-Do, TickTick |
+| `user` | Account, settings, TOTP, CalDAV tokens, export, and deletion |
+| `system` | Vikunja instance info |
 | `version` | Print CLI version |
 
-Run `vikunja [command] --help` for detailed usage of any command.
+Run `vikunja-cli <command> --help` for the flags of any command, and see
+[DOCS.md](DOCS.md) for the full command reference with every flag and API endpoint.
 
-### Shell Completion
+### Shell completion
 
 ```bash
-# Bash
-source <(vikunja completion bash)
-
-# Zsh
-source <(vikunja completion zsh)
-
-# Fish
-vikunja completion fish | source
+source <(vikunja-cli completion bash)   # Bash
+source <(vikunja-cli completion zsh)    # Zsh
+vikunja-cli completion fish | source    # Fish
 ```
 
-See [DOCS.md](DOCS.md) for the full command reference.
+## Use it from Claude Code
+
+This repo ships a Claude Code skill so an agent can drive Vikunja for you. Install
+it with the [`skills`](https://github.com/anthropics/skills) CLI:
+
+```bash
+npx skills@latest add jo-nike/vikunja-cli -a claude-code --copy
+```
+
+On first use the skill downloads the matching binary into its own `bin/` (see
+`.claude/skills/vikunja-cli/scripts/install-binary.sh`); configure auth as above.
 
 ## Acknowledgments
 
-This project interacts with the [Vikunja](https://vikunja.io) API. Vikunja is an open-source project management application licensed under the [GNU AGPLv3](https://github.com/go-vikunja/vikunja/blob/main/LICENSE).
+This project talks to the [Vikunja](https://vikunja.io) API. Vikunja is an
+open-source project-management application licensed under the
+[GNU AGPLv3](https://github.com/go-vikunja/vikunja/blob/main/LICENSE).
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Licensed under the MIT License. See [LICENSE](LICENSE) for details.

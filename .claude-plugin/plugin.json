@@ -1,0 +1,7 @@
+{
+  "name": "vikunja-cli",
+  "description": "Manage Vikunja tasks, projects, teams, labels, and more from the command line.",
+  "skills": [
+    "./.claude/skills/vikunja-cli"
+  ]
+}

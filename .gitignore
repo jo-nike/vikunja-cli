@@ -1,0 +1,14 @@
+# Built binary (host-arch, produced by `make build`)
+/vikunja-cli
+
+# Skill bundle zips
+*.skill
+
+# GoReleaser output
+dist/
+
+# Skill bundle staging (goreleaser before-hook)
+/build/
+
+# Bootstrapped/locally-built skill binary (not committed)
+.claude/skills/vikunja-cli/bin/
